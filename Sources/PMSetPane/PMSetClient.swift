@@ -32,7 +32,11 @@ final class PMSetClient {
             "disksleep", String(settings.diskSleep),
             "womp", settings.wakeForNetwork ? "1" : "0",
         ].joined(separator: " ")
-        _ = try output(arguments: ["-e", "do shell script \\\"\(command)\\\" with administrator privileges"], executable: "/usr/bin/osascript")
+        _ = try output(arguments: ["-e", Self.privilegedScript(command: command)], executable: "/usr/bin/osascript")
+    }
+
+    static func privilegedScript(command: String) -> String {
+        "do shell script \"\(command)\" with administrator privileges"
     }
 
     private func output(arguments: [String], executable: String = "/usr/bin/pmset") throws -> String {

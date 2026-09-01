@@ -21,3 +21,10 @@ import Testing
 @Test func missingRequiredSettingFailsToParse() {
     #expect(PMSetOutput.settings(in: "AC Power:\n displaysleep 30", source: .ac) == nil)
 }
+
+@Test func privilegedScriptUsesValidAppleScriptQuotes() {
+    #expect(
+        PMSetClient.privilegedScript(command: "/usr/bin/pmset -c sleep 0")
+            == "do shell script \"/usr/bin/pmset -c sleep 0\" with administrator privileges"
+    )
+}

@@ -1,10 +1,10 @@
-# PMSet Pane
+# Power Management
 
 ![License](https://img.shields.io/github/license/GeneralD/pmset-pane) ![macOS](https://img.shields.io/badge/macOS-13%2B-000000) ![Swift](https://img.shields.io/badge/Swift-6-F05138)
 
 ![An abstract power-management control panel with display and computer sleep timers.](Assets/hero.png)
 
-An open-source macOS preference pane for editing common `pmset` idle timers without Terminal. It keeps display sleep and system sleep separate, so a Mac can turn its screen off while long-running work continues.
+Power Management is an open-source macOS preference pane for editing common `pmset` idle timers without Terminal. It keeps display sleep and system sleep separate, so a Mac can turn its screen off while long-running work continues.
 
 ## Install
 

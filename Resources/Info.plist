@@ -5,22 +5,26 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleDisplayName</key>
-    <string>PMSet Pane</string>
+    <string>Power Management</string>
     <key>CFBundleExecutable</key>
     <string>PMSetPane</string>
+    <key>CFBundleIconFile</key>
+    <string>PMSetPane.icns</string>
     <key>CFBundleIdentifier</key>
     <string>io.github.generald.pmset-pane</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>PMSet Pane</string>
+    <string>Power Management</string>
     <key>CFBundlePackageType</key>
     <string>prefPane</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>0.1.1</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>2</string>
     <key>NSPrincipalClass</key>
     <string>PowerManagementPreferencePane</string>
+    <key>NSPrefPaneIconFile</key>
+    <string>PMSetPane.icns</string>
 </dict>
 </plist>
