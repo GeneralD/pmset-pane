@@ -8,7 +8,16 @@ An open-source macOS preference pane for editing common `pmset` idle timers with
 
 ## Install
 
-Homebrew installation will be available from the `GeneralD/tap` cask after the first signed release. Until then, build the pane locally:
+Install the released preference pane with Homebrew:
+
+```sh
+brew tap GeneralD/tap
+brew install --cask pmset-pane
+```
+
+The initial release is ad-hoc signed while Developer ID notarization is pending. The cask removes its download quarantine after installation so System Settings can load the preference pane.
+
+To build from source instead:
 
 ```sh
 git clone https://github.com/GeneralD/pmset-pane.git
