@@ -1,0 +1,45 @@
+# PMSet Pane
+
+![License](https://img.shields.io/github/license/GeneralD/pmset-pane) ![macOS](https://img.shields.io/badge/macOS-13%2B-000000) ![Swift](https://img.shields.io/badge/Swift-6-F05138)
+
+![An abstract power-management control panel with display and computer sleep timers.](Assets/hero.png)
+
+An open-source macOS preference pane for editing common `pmset` idle timers without Terminal. It keeps display sleep and system sleep separate, so a Mac can turn its screen off while long-running work continues.
+
+## Install
+
+Homebrew installation will be available from the `GeneralD/tap` cask after the first signed release. Until then, build the pane locally:
+
+```sh
+git clone https://github.com/GeneralD/pmset-pane.git
+cd pmset-pane
+./scripts/build-prefpane.sh
+open dist/PMSetPane.prefPane
+```
+
+## Use
+
+Open **System Settings**, choose **PMSet Pane**, then select **Battery** or **Power Adapter**. The pane reads the current `pmset` values and requests administrator authentication only when applying a change.
+
+To run an AI agent while away from the Mac:
+
+1. Set the screen saver in System Settings to your preferred delay.
+2. Set **Turn display off after** to a later delay.
+3. Set **Put computer to sleep after** to **Never**.
+
+The pane refuses an invalid timer ordering that can cause macOS to warn that display sleep occurs after system sleep.
+
+## Build and test
+
+```sh
+swift test
+./scripts/build-prefpane.sh
+```
+
+## Compatibility
+
+macOS 13 or later. This is a legacy `.prefPane` bundle, which macOS displays as a third-party pane in System Settings.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
