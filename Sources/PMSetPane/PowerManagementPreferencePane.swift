@@ -205,12 +205,12 @@ private final class PowerSettingsViewController: NSViewController {
         header.orientation = .horizontal
         header.alignment = .centerY
         header.distribution = .fill
-        header.widthAnchor.constraint(equalTo: slider.widthAnchor).isActive = true
 
         let row = NSStackView(views: [header, slider])
         row.orientation = .vertical
         row.alignment = .leading
         row.spacing = 2
+        header.widthAnchor.constraint(equalTo: slider.widthAnchor).isActive = true
         return row
     }
 
