@@ -6,7 +6,7 @@ build_dir="$root_dir/dist"
 pane_name="PowerManagement"
 pane_dir="$build_dir/$pane_name.prefPane"
 bundle_dir="$pane_dir/Contents"
-version="${VERSION:-0.2.0}"
+version="${VERSION:-0.2.1}"
 icon_dir="$build_dir/$pane_name.iconset"
 
 rm -rf "$build_dir"

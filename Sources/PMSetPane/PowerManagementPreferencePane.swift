@@ -189,6 +189,7 @@ private final class PowerSettingsViewController: NSViewController {
     private func configure(_ slider: NSSlider, tag: Int, maximum: Int) {
         slider.minValue = 1
         slider.maxValue = Double(maximum)
+        slider.tag = tag
         slider.target = self
         slider.action = #selector(timerChanged)
         slider.isContinuous = true
