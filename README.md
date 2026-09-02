@@ -40,6 +40,8 @@ To run an AI agent while away from the Mac:
 
 For separate screen saver delays, select **Battery** or **Power Adapter**, set **Start screen saver after** for that power source, then click **Apply Changes**. Repeat for the other power source. The monitor starts at login and updates the screen saver delay immediately whenever the power source changes.
 
+The Screen Saver, Display Off, and Computer Sleep sliders preserve their order. Moving a slider pushes the related timers forward or backward as needed. Disk Sleep is an independent slider.
+
 The pane refuses an invalid timer ordering that can cause macOS to warn that display sleep occurs after system sleep.
 
 ## Build and test

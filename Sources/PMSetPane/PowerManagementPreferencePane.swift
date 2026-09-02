@@ -18,17 +18,20 @@ public final class PowerManagementPreferencePane: NSPreferencePane {
 }
 
 private final class PowerSettingsViewController: NSViewController {
-    private let timerMinutes = [0, 1, 5, 10, 15, 20, 25, 30, 45, 60, 120]
     private let client = PMSetClient()
     private var settings = [PowerSource: PowerSettings]()
     private var source = PowerSource.ac
 
     private let sourceControl = NSSegmentedControl(labels: PowerSource.allCases.map(\.label), trackingMode: .selectOne, target: nil, action: nil)
-    private let displaySleep = NSPopUpButton()
-    private let systemSleep = NSPopUpButton()
-    private let diskSleep = NSPopUpButton()
+    private let screenSaverSlider = NSSlider()
+    private let displaySleepSlider = NSSlider()
+    private let systemSleepSlider = NSSlider()
+    private let diskSleepSlider = NSSlider()
+    private let screenSaverValue = NSTextField(labelWithString: "")
+    private let displaySleepValue = NSTextField(labelWithString: "")
+    private let systemSleepValue = NSTextField(labelWithString: "")
+    private let diskSleepValue = NSTextField(labelWithString: "")
     private let wakeForNetwork = NSButton(checkboxWithTitle: "Wake for network access", target: nil, action: nil)
-    private let screenSaver = NSPopUpButton()
     private let status = NSTextField(labelWithString: "")
     private let automationAgent = ScreenSaverAutomationAgent()
 
@@ -36,20 +39,19 @@ private final class PowerSettingsViewController: NSViewController {
         sourceControl.target = self
         sourceControl.action = #selector(sourceChanged)
         sourceControl.selectedSegment = 1
-        [displaySleep, systemSleep, diskSleep, screenSaver].forEach { menu in
-            menu.addItems(withTitles: timerMinutes.map(timerTitle))
-        }
+        configure(screenSaverSlider, tag: 0, maximum: TimerTimeline.never - 1)
+        configure(displaySleepSlider, tag: 1, maximum: TimerTimeline.never)
+        configure(systemSleepSlider, tag: 2, maximum: TimerTimeline.never)
+        configure(diskSleepSlider, tag: 3, maximum: TimerTimeline.never)
 
-        let form = NSGridView(views: [
-            [label("Turn display off after"), displaySleep],
-            [label("Put computer to sleep after"), systemSleep],
-            [label("Put disks to sleep after"), diskSleep],
-            [label("Start screen saver after"), screenSaver],
+        let timeline = NSStackView(views: [
+            sliderRow(title: "Screen Saver", slider: screenSaverSlider, value: screenSaverValue),
+            sliderRow(title: "Display Off", slider: displaySleepSlider, value: displaySleepValue),
+            sliderRow(title: "Computer Sleep", slider: systemSleepSlider, value: systemSleepValue),
         ])
-        form.rowSpacing = 12
-        form.columnSpacing = 24
-        form.column(at: 0).xPlacement = .trailing
-        form.column(at: 1).xPlacement = .leading
+        timeline.orientation = .vertical
+        timeline.alignment = .leading
+        timeline.spacing = 12
 
         let apply = NSButton(title: "Apply Changes", target: self, action: #selector(applyChanges))
         apply.bezelStyle = .rounded
@@ -58,7 +60,8 @@ private final class PowerSettingsViewController: NSViewController {
         let content = NSStackView(views: [
             heading(),
             sourceControl,
-            form,
+            timeline,
+            sliderRow(title: "Disk Sleep", slider: diskSleepSlider, value: diskSleepValue),
             wakeForNetwork,
             NSStackView(views: [apply, status]),
             footnote(),
@@ -81,7 +84,6 @@ private final class PowerSettingsViewController: NSViewController {
         ])
         self.view = view
         reload()
-        renderScreenSaverAutomation()
     }
 
     @objc private func sourceChanged() {
@@ -91,9 +93,9 @@ private final class PowerSettingsViewController: NSViewController {
 
     @objc private func applyChanges() {
         let updated = PowerSettings(
-            displaySleep: minutes(in: displaySleep),
-            systemSleep: minutes(in: systemSleep),
-            diskSleep: minutes(in: diskSleep),
+            displaySleep: TimerTimeline.minutes(for: timeline.displaySleep),
+            systemSleep: TimerTimeline.minutes(for: timeline.systemSleep),
+            diskSleep: minutes(in: diskSleepSlider),
             wakeForNetwork: wakeForNetwork.state == .on
         )
 
@@ -111,8 +113,8 @@ private final class PowerSettingsViewController: NSViewController {
         let current = ScreenSaverAutomation.configuration
         let configuration = ScreenSaverAutomationConfiguration(
             isEnabled: true,
-            batteryMinutes: source == .battery ? minutes(in: screenSaver) : current.batteryMinutes,
-            powerAdapterMinutes: source == .ac ? minutes(in: screenSaver) : current.powerAdapterMinutes
+            batteryMinutes: source == .battery ? TimerTimeline.minutes(for: timeline.screenSaver) : current.batteryMinutes,
+            powerAdapterMinutes: source == .ac ? TimerTimeline.minutes(for: timeline.screenSaver) : current.powerAdapterMinutes
         )
 
         ScreenSaverAutomation.save(configuration)
@@ -132,11 +134,15 @@ private final class PowerSettingsViewController: NSViewController {
 
     private func render() {
         guard let current = settings[source] else { return }
-        select(current.displaySleep, in: displaySleep)
-        select(current.systemSleep, in: systemSleep)
-        select(current.diskSleep, in: diskSleep)
+        let configuration = ScreenSaverAutomation.configuration
+        let timeline = TimerTimeline(
+            screenSaverMinutes: source == .battery ? configuration.batteryMinutes : configuration.powerAdapterMinutes,
+            displaySleepMinutes: current.displaySleep,
+            systemSleepMinutes: current.systemSleep
+        ).adjusted(for: .systemSleep)
+        render(timeline)
+        renderDiskSleep(current.diskSleep)
         wakeForNetwork.state = current.wakeForNetwork ? .on : .off
-        renderScreenSaverAutomation()
     }
 
     private func heading() -> NSView {
@@ -151,20 +157,74 @@ private final class PowerSettingsViewController: NSViewController {
     }
 
     private func footnote() -> NSView {
-        let note = NSTextField(wrappingLabelWithString: "Display sleep counts from the last input. To keep background work running after the display turns off, set computer sleep to Never.")
+        let note = NSTextField(wrappingLabelWithString: "The first three timers stay ordered. Disk sleep is independent. To keep background work running after the display turns off, set computer sleep to Never.")
         note.font = .preferredFont(forTextStyle: .caption1)
         note.textColor = .secondaryLabelColor
         note.maximumNumberOfLines = 0
         return note
     }
 
-    private func label(_ value: String) -> NSTextField {
-        NSTextField(labelWithString: value)
+    @objc private func timerChanged(_ slider: NSSlider) {
+        let value = Int(slider.doubleValue.rounded())
+        switch slider.tag {
+        case 0:
+            render(TimerTimeline(screenSaver: value, displaySleep: timeline.displaySleep, systemSleep: timeline.systemSleep).adjusted(for: .screenSaver))
+        case 1:
+            render(TimerTimeline(screenSaver: timeline.screenSaver, displaySleep: value, systemSleep: timeline.systemSleep).adjusted(for: .displaySleep))
+        case 2:
+            render(TimerTimeline(screenSaver: timeline.screenSaver, displaySleep: timeline.displaySleep, systemSleep: value).adjusted(for: .systemSleep))
+        default:
+            renderDiskSleep(minutes(in: slider))
+        }
     }
 
-    private func renderScreenSaverAutomation() {
-        let configuration = ScreenSaverAutomation.configuration
-        select(source == .battery ? configuration.batteryMinutes : configuration.powerAdapterMinutes, in: screenSaver)
+    private var timeline: TimerTimeline {
+        TimerTimeline(
+            screenSaver: Int(screenSaverSlider.doubleValue.rounded()),
+            displaySleep: Int(displaySleepSlider.doubleValue.rounded()),
+            systemSleep: Int(systemSleepSlider.doubleValue.rounded())
+        )
+    }
+
+    private func configure(_ slider: NSSlider, tag: Int, maximum: Int) {
+        slider.minValue = 1
+        slider.maxValue = Double(maximum)
+        slider.target = self
+        slider.action = #selector(timerChanged)
+        slider.isContinuous = true
+        slider.widthAnchor.constraint(equalToConstant: 420).isActive = true
+    }
+
+    private func sliderRow(title: String, slider: NSSlider, value: NSTextField) -> NSView {
+        let title = NSTextField(labelWithString: title)
+        value.alignment = .right
+        value.setContentHuggingPriority(.required, for: .horizontal)
+
+        let header = NSStackView(views: [title, value])
+        header.orientation = .horizontal
+        header.alignment = .centerY
+        header.distribution = .fill
+        header.widthAnchor.constraint(equalTo: slider.widthAnchor).isActive = true
+
+        let row = NSStackView(views: [header, slider])
+        row.orientation = .vertical
+        row.alignment = .leading
+        row.spacing = 2
+        return row
+    }
+
+    private func render(_ timeline: TimerTimeline) {
+        screenSaverSlider.doubleValue = Double(timeline.screenSaver)
+        displaySleepSlider.doubleValue = Double(timeline.displaySleep)
+        systemSleepSlider.doubleValue = Double(timeline.systemSleep)
+        screenSaverValue.stringValue = timerTitle(minutes: TimerTimeline.minutes(for: timeline.screenSaver))
+        displaySleepValue.stringValue = timerTitle(minutes: TimerTimeline.minutes(for: timeline.displaySleep))
+        systemSleepValue.stringValue = timerTitle(minutes: TimerTimeline.minutes(for: timeline.systemSleep))
+    }
+
+    private func renderDiskSleep(_ minutes: Int) {
+        diskSleepSlider.doubleValue = Double(TimerTimeline.sliderValue(for: minutes))
+        diskSleepValue.stringValue = timerTitle(minutes: minutes)
     }
 
     private var monitorURL: URL {
@@ -173,12 +233,8 @@ private final class PowerSettingsViewController: NSViewController {
             .appending(path: "Contents/Resources/PowerManagementMonitor")
     }
 
-    private func select(_ value: Int, in button: NSPopUpButton) {
-        button.selectItem(at: timerMinutes.firstIndex(of: value) ?? 0)
-    }
-
-    private func minutes(in button: NSPopUpButton) -> Int {
-        timerMinutes[button.indexOfSelectedItem]
+    private func minutes(in slider: NSSlider) -> Int {
+        TimerTimeline.minutes(for: Int(slider.doubleValue.rounded()))
     }
 
     private func timerTitle(minutes: Int) -> String {

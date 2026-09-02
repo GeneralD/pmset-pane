@@ -40,3 +40,24 @@ import Testing
     #expect(configuration.minutes(for: .battery) == 1)
     #expect(configuration.minutes(for: .powerAdapter) == 10)
 }
+
+@Test func screenSaverPushesLaterTimersForward() {
+    let timeline = TimerTimeline(screenSaver: 30, displaySleep: 20, systemSleep: 25)
+        .adjusted(for: .screenSaver)
+
+    #expect(timeline == TimerTimeline(screenSaver: 30, displaySleep: 31, systemSleep: 31))
+}
+
+@Test func earlierSystemSleepPushesTimersBackward() {
+    let timeline = TimerTimeline(screenSaver: 20, displaySleep: 30, systemSleep: 15)
+        .adjusted(for: .systemSleep)
+
+    #expect(timeline == TimerTimeline(screenSaver: 14, displaySleep: 15, systemSleep: 15))
+}
+
+@Test func systemSleepCanRemainNever() {
+    let timeline = TimerTimeline(screenSaver: 20, displaySleep: 30, systemSleep: TimerTimeline.never)
+        .adjusted(for: .systemSleep)
+
+    #expect(TimerTimeline.minutes(for: timeline.systemSleep) == 0)
+}
