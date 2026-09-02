@@ -28,7 +28,6 @@ private final class PowerSettingsViewController: NSViewController {
     private let systemSleep = NSPopUpButton()
     private let diskSleep = NSPopUpButton()
     private let wakeForNetwork = NSButton(checkboxWithTitle: "Wake for network access", target: nil, action: nil)
-    private let screenSaverEnabled = NSButton(checkboxWithTitle: "Use a separate screen saver delay for each power source", target: nil, action: nil)
     private let screenSaver = NSPopUpButton()
     private let status = NSTextField(labelWithString: "")
     private let automationAgent = ScreenSaverAutomationAgent()
@@ -61,7 +60,6 @@ private final class PowerSettingsViewController: NSViewController {
             sourceControl,
             form,
             wakeForNetwork,
-            screenSaverEnabled,
             NSStackView(views: [apply, status]),
             footnote(),
         ])
@@ -112,7 +110,7 @@ private final class PowerSettingsViewController: NSViewController {
     private func applyScreenSaverConfiguration() throws {
         let current = ScreenSaverAutomation.configuration
         let configuration = ScreenSaverAutomationConfiguration(
-            isEnabled: screenSaverEnabled.state == .on,
+            isEnabled: true,
             batteryMinutes: source == .battery ? minutes(in: screenSaver) : current.batteryMinutes,
             powerAdapterMinutes: source == .ac ? minutes(in: screenSaver) : current.powerAdapterMinutes
         )
@@ -166,7 +164,6 @@ private final class PowerSettingsViewController: NSViewController {
 
     private func renderScreenSaverAutomation() {
         let configuration = ScreenSaverAutomation.configuration
-        screenSaverEnabled.state = configuration.isEnabled ? .on : .off
         select(source == .battery ? configuration.batteryMinutes : configuration.powerAdapterMinutes, in: screenSaver)
     }
 
