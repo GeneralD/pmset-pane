@@ -1,5 +1,6 @@
 import Testing
 @testable import PMSetPane
+@testable import PowerManagementCore
 
 @Test func parsedACSettings() throws {
     let output = """
@@ -27,4 +28,15 @@ import Testing
         PMSetClient.privilegedScript(command: "/usr/bin/pmset -c sleep 0")
             == "do shell script \"/usr/bin/pmset -c sleep 0\" with administrator privileges"
     )
+}
+
+@Test func screenSaverUsesTheConfiguredPowerSourceTimeout() {
+    let configuration = ScreenSaverAutomationConfiguration(
+        isEnabled: true,
+        batteryMinutes: 1,
+        powerAdapterMinutes: 10
+    )
+
+    #expect(configuration.minutes(for: .battery) == 1)
+    #expect(configuration.minutes(for: .powerAdapter) == 10)
 }

@@ -1,5 +1,6 @@
 @preconcurrency import AppKit
 @preconcurrency import PreferencePanes
+import PowerManagementCore
 
 @objc(PowerManagementPreferencePane)
 public final class PowerManagementPreferencePane: NSPreferencePane {
@@ -26,13 +27,20 @@ private final class PowerSettingsViewController: NSViewController {
     private let systemSleep = NSPopUpButton()
     private let diskSleep = NSPopUpButton()
     private let wakeForNetwork = NSButton(checkboxWithTitle: "Wake for network access", target: nil, action: nil)
+    private let screenSaverEnabled = NSButton(checkboxWithTitle: "Switch automatically when the power source changes", target: nil, action: nil)
+    private let batteryScreenSaver = NSPopUpButton()
+    private let powerAdapterScreenSaver = NSPopUpButton()
     private let status = NSTextField(labelWithString: "")
+    private let automationAgent = ScreenSaverAutomationAgent()
 
     override func loadView() {
         sourceControl.target = self
         sourceControl.action = #selector(sourceChanged)
         sourceControl.selectedSegment = 1
         [displaySleep, systemSleep, diskSleep].forEach { menu in
+            menu.addItems(withTitles: ["Never", "1 minute", "5 minutes", "10 minutes", "15 minutes", "30 minutes", "1 hour", "2 hours"])
+        }
+        [batteryScreenSaver, powerAdapterScreenSaver].forEach { menu in
             menu.addItems(withTitles: ["Never", "1 minute", "5 minutes", "10 minutes", "15 minutes", "30 minutes", "1 hour", "2 hours"])
         }
 
@@ -55,6 +63,7 @@ private final class PowerSettingsViewController: NSViewController {
             sourceControl,
             form,
             wakeForNetwork,
+            screenSaverAutomationGroup(),
             NSStackView(views: [apply, status]),
             footnote(),
         ])
@@ -76,6 +85,7 @@ private final class PowerSettingsViewController: NSViewController {
         ])
         self.view = view
         reload()
+        renderScreenSaverAutomation()
     }
 
     @objc private func sourceChanged() {
@@ -95,6 +105,23 @@ private final class PowerSettingsViewController: NSViewController {
             try client.apply(updated, to: source)
             settings[source] = updated
             status.stringValue = "Saved \(source.label.lowercased()) settings."
+        } catch {
+            status.stringValue = error.localizedDescription
+        }
+    }
+
+    @objc private func applyScreenSaverAutomation() {
+        let configuration = ScreenSaverAutomationConfiguration(
+            isEnabled: screenSaverEnabled.state == .on,
+            batteryMinutes: minutes(in: batteryScreenSaver),
+            powerAdapterMinutes: minutes(in: powerAdapterScreenSaver)
+        )
+
+        do {
+            ScreenSaverAutomation.save(configuration)
+            try automationAgent.setEnabled(configuration.isEnabled, monitorURL: monitorURL)
+            try ScreenSaverAutomation.applyCurrentPowerSource()
+            status.stringValue = configuration.isEnabled ? "Screen saver switching is active." : "Screen saver switching is off."
         } catch {
             status.stringValue = error.localizedDescription
         }
@@ -130,7 +157,7 @@ private final class PowerSettingsViewController: NSViewController {
     }
 
     private func footnote() -> NSView {
-        let note = NSTextField(wrappingLabelWithString: "Screen saver timing is managed separately in System Settings. To keep background work running after the display turns off, set computer sleep to Never.")
+        let note = NSTextField(wrappingLabelWithString: "Display sleep counts from the last input. To keep background work running after the display turns off, set computer sleep to Never.")
         note.font = .preferredFont(forTextStyle: .caption1)
         note.textColor = .secondaryLabelColor
         note.maximumNumberOfLines = 0
@@ -139,6 +166,41 @@ private final class PowerSettingsViewController: NSViewController {
 
     private func label(_ value: String) -> NSTextField {
         NSTextField(labelWithString: value)
+    }
+
+    private func screenSaverAutomationGroup() -> NSView {
+        let form = NSGridView(views: [
+            [label("On battery"), batteryScreenSaver],
+            [label("On power adapter"), powerAdapterScreenSaver],
+        ])
+        form.rowSpacing = 8
+        form.columnSpacing = 24
+        form.column(at: 0).xPlacement = .trailing
+        form.column(at: 1).xPlacement = .leading
+
+        let apply = NSButton(title: "Apply Screen Saver Switching", target: self, action: #selector(applyScreenSaverAutomation))
+        let content = NSStackView(views: [screenSaverEnabled, form, apply])
+        content.orientation = .vertical
+        content.alignment = .leading
+        content.spacing = 10
+
+        let group = NSBox()
+        group.title = "Screen Saver"
+        group.contentView = content
+        return group
+    }
+
+    private func renderScreenSaverAutomation() {
+        let configuration = ScreenSaverAutomation.configuration
+        screenSaverEnabled.state = configuration.isEnabled ? .on : .off
+        select(configuration.batteryMinutes, in: batteryScreenSaver)
+        select(configuration.powerAdapterMinutes, in: powerAdapterScreenSaver)
+    }
+
+    private var monitorURL: URL {
+        Bundle(for: PowerManagementPreferencePane.self)
+            .bundleURL
+            .appending(path: "Contents/Resources/PowerManagementMonitor")
     }
 
     private func select(_ value: Int, in button: NSPopUpButton) {

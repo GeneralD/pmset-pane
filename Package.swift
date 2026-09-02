@@ -7,10 +7,13 @@ let package = Package(
     platforms: [.macOS(.v13)],
     products: [
         .library(name: "PMSetPane", type: .dynamic, targets: ["PMSetPane"]),
+        .executable(name: "PowerManagementMonitor", targets: ["PowerManagementMonitor"]),
     ],
     targets: [
-        .target(name: "PMSetPane"),
-        .testTarget(name: "PMSetPaneTests", dependencies: ["PMSetPane"]),
+        .target(name: "PowerManagementCore"),
+        .target(name: "PMSetPane", dependencies: ["PowerManagementCore"]),
+        .executableTarget(name: "PowerManagementMonitor", dependencies: ["PowerManagementCore"]),
+        .testTarget(name: "PMSetPaneTests", dependencies: ["PMSetPane", "PowerManagementCore"]),
     ],
     swiftLanguageModes: [.v5]
 )

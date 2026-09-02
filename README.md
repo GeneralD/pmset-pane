@@ -6,6 +6,8 @@
 
 Power Management is an open-source macOS preference pane for editing common `pmset` idle timers without Terminal. It keeps display sleep and system sleep separate, so a Mac can turn its screen off while long-running work continues.
 
+It can also switch the screen saver delay automatically when AC power is connected or disconnected. The background monitor is a login LaunchAgent that sleeps on an IOKit power-source notification; it does not poll.
+
 ## Install
 
 Install the released preference pane with Homebrew:
@@ -35,6 +37,8 @@ To run an AI agent while away from the Mac:
 1. Set the screen saver in System Settings to your preferred delay.
 2. Set **Turn display off after** to a later delay.
 3. Set **Put computer to sleep after** to **Never**.
+
+For separate screen saver delays, enable **Switch automatically when the power source changes**, choose the battery and power-adapter delays, then click **Apply Screen Saver Switching**. The monitor starts at login and updates the screen saver delay immediately whenever the power source changes.
 
 The pane refuses an invalid timer ordering that can cause macOS to warn that display sleep occurs after system sleep.
 

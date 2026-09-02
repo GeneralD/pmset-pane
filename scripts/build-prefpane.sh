@@ -4,8 +4,9 @@ set -euo pipefail
 root_dir=$(cd "$(dirname "$0")/.." && pwd)
 build_dir="$root_dir/dist"
 pane_name="PowerManagement"
-bundle_dir="$build_dir/$pane_name.prefPane/Contents"
-version="${VERSION:-0.1.2}"
+pane_dir="$build_dir/$pane_name.prefPane"
+bundle_dir="$pane_dir/Contents"
+version="${VERSION:-0.1.3}"
 icon_dir="$build_dir/$pane_name.iconset"
 
 rm -rf "$build_dir"
@@ -19,6 +20,10 @@ lipo -create \
     "$root_dir/.build/arm64-apple-macosx/release/libPMSetPane.dylib" \
     "$root_dir/.build/x86_64-apple-macosx/release/libPMSetPane.dylib" \
     -output "$bundle_dir/MacOS/PMSetPane"
+lipo -create \
+    "$root_dir/.build/arm64-apple-macosx/release/PowerManagementMonitor" \
+    "$root_dir/.build/x86_64-apple-macosx/release/PowerManagementMonitor" \
+    -output "$bundle_dir/Resources/PowerManagementMonitor"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $version" "$bundle_dir/Info.plist"
 
 for size in 16 32 128 256 512; do
@@ -28,7 +33,7 @@ for size in 16 32 128 256 512; do
 done
 iconutil -c icns "$icon_dir" -o "$bundle_dir/Resources/PMSetPane.icns"
 
-codesign --force --sign - "$bundle_dir/MacOS/PMSetPane"
+codesign --force --deep --sign - "$pane_dir"
 
-ditto -c -k --sequesterRsrc --keepParent "$build_dir/$pane_name.prefPane" "$build_dir/PMSetPane.zip"
+ditto -c -k --sequesterRsrc --keepParent "$pane_dir" "$build_dir/PMSetPane.zip"
 printf 'Created %s\n' "$build_dir/PMSetPane.zip"
