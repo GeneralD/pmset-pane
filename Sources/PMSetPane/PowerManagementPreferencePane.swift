@@ -185,9 +185,28 @@ private final class PowerSettingsViewController: NSViewController {
         content.spacing = 10
 
         let group = NSBox()
-        group.title = "Screen Saver"
-        group.contentView = content
-        return group
+        group.boxType = .primary
+        group.titlePosition = .noTitle
+
+        let groupContent = NSView()
+        group.contentView = groupContent
+        groupContent.addSubview(content)
+        content.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            content.leadingAnchor.constraint(equalTo: groupContent.leadingAnchor, constant: 14),
+            content.trailingAnchor.constraint(equalTo: groupContent.trailingAnchor, constant: -14),
+            content.topAnchor.constraint(equalTo: groupContent.topAnchor, constant: 14),
+            content.bottomAnchor.constraint(equalTo: groupContent.bottomAnchor, constant: -14),
+            group.widthAnchor.constraint(equalToConstant: 464),
+        ])
+
+        let title = NSTextField(labelWithString: "Screen Saver")
+        title.font = .preferredFont(forTextStyle: .headline)
+        let section = NSStackView(views: [title, group])
+        section.orientation = .vertical
+        section.alignment = .leading
+        section.spacing = 8
+        return section
     }
 
     private func renderScreenSaverAutomation() {
