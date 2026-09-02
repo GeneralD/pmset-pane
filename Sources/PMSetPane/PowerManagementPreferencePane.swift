@@ -18,6 +18,7 @@ public final class PowerManagementPreferencePane: NSPreferencePane {
 }
 
 private final class PowerSettingsViewController: NSViewController {
+    private let timerMinutes = [0, 1, 5, 10, 15, 20, 25, 30, 45, 60, 120]
     private let client = PMSetClient()
     private var settings = [PowerSource: PowerSettings]()
     private var source = PowerSource.ac
@@ -37,7 +38,7 @@ private final class PowerSettingsViewController: NSViewController {
         sourceControl.action = #selector(sourceChanged)
         sourceControl.selectedSegment = 1
         [displaySleep, systemSleep, diskSleep, screenSaver].forEach { menu in
-            menu.addItems(withTitles: ["Never", "1 minute", "5 minutes", "10 minutes", "15 minutes", "30 minutes", "1 hour", "2 hours"])
+            menu.addItems(withTitles: timerMinutes.map(timerTitle))
         }
 
         let form = NSGridView(views: [
@@ -176,10 +177,20 @@ private final class PowerSettingsViewController: NSViewController {
     }
 
     private func select(_ value: Int, in button: NSPopUpButton) {
-        button.selectItem(at: [0, 1, 5, 10, 15, 30, 60, 120].firstIndex(of: value) ?? 0)
+        button.selectItem(at: timerMinutes.firstIndex(of: value) ?? 0)
     }
 
     private func minutes(in button: NSPopUpButton) -> Int {
-        [0, 1, 5, 10, 15, 30, 60, 120][button.indexOfSelectedItem]
+        timerMinutes[button.indexOfSelectedItem]
+    }
+
+    private func timerTitle(minutes: Int) -> String {
+        switch minutes {
+        case 0: "Never"
+        case 1: "1 minute"
+        case 60: "1 hour"
+        case 120: "2 hours"
+        default: "\(minutes) minutes"
+        }
     }
 }
