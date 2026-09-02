@@ -27,9 +27,8 @@ private final class PowerSettingsViewController: NSViewController {
     private let systemSleep = NSPopUpButton()
     private let diskSleep = NSPopUpButton()
     private let wakeForNetwork = NSButton(checkboxWithTitle: "Wake for network access", target: nil, action: nil)
-    private let screenSaverEnabled = NSButton(checkboxWithTitle: "Switch automatically when the power source changes", target: nil, action: nil)
-    private let batteryScreenSaver = NSPopUpButton()
-    private let powerAdapterScreenSaver = NSPopUpButton()
+    private let screenSaverEnabled = NSButton(checkboxWithTitle: "Use a separate screen saver delay for each power source", target: nil, action: nil)
+    private let screenSaver = NSPopUpButton()
     private let status = NSTextField(labelWithString: "")
     private let automationAgent = ScreenSaverAutomationAgent()
 
@@ -37,10 +36,7 @@ private final class PowerSettingsViewController: NSViewController {
         sourceControl.target = self
         sourceControl.action = #selector(sourceChanged)
         sourceControl.selectedSegment = 1
-        [displaySleep, systemSleep, diskSleep].forEach { menu in
-            menu.addItems(withTitles: ["Never", "1 minute", "5 minutes", "10 minutes", "15 minutes", "30 minutes", "1 hour", "2 hours"])
-        }
-        [batteryScreenSaver, powerAdapterScreenSaver].forEach { menu in
+        [displaySleep, systemSleep, diskSleep, screenSaver].forEach { menu in
             menu.addItems(withTitles: ["Never", "1 minute", "5 minutes", "10 minutes", "15 minutes", "30 minutes", "1 hour", "2 hours"])
         }
 
@@ -48,6 +44,7 @@ private final class PowerSettingsViewController: NSViewController {
             [label("Turn display off after"), displaySleep],
             [label("Put computer to sleep after"), systemSleep],
             [label("Put disks to sleep after"), diskSleep],
+            [label("Start screen saver after"), screenSaver],
         ])
         form.rowSpacing = 12
         form.columnSpacing = 24
@@ -63,7 +60,7 @@ private final class PowerSettingsViewController: NSViewController {
             sourceControl,
             form,
             wakeForNetwork,
-            screenSaverAutomationGroup(),
+            screenSaverEnabled,
             NSStackView(views: [apply, status]),
             footnote(),
         ])
@@ -103,6 +100,7 @@ private final class PowerSettingsViewController: NSViewController {
 
         do {
             try client.apply(updated, to: source)
+            try applyScreenSaverConfiguration()
             settings[source] = updated
             status.stringValue = "Saved \(source.label.lowercased()) settings."
         } catch {
@@ -110,21 +108,17 @@ private final class PowerSettingsViewController: NSViewController {
         }
     }
 
-    @objc private func applyScreenSaverAutomation() {
+    private func applyScreenSaverConfiguration() throws {
+        let current = ScreenSaverAutomation.configuration
         let configuration = ScreenSaverAutomationConfiguration(
             isEnabled: screenSaverEnabled.state == .on,
-            batteryMinutes: minutes(in: batteryScreenSaver),
-            powerAdapterMinutes: minutes(in: powerAdapterScreenSaver)
+            batteryMinutes: source == .battery ? minutes(in: screenSaver) : current.batteryMinutes,
+            powerAdapterMinutes: source == .ac ? minutes(in: screenSaver) : current.powerAdapterMinutes
         )
 
-        do {
-            ScreenSaverAutomation.save(configuration)
-            try automationAgent.setEnabled(configuration.isEnabled, monitorURL: monitorURL)
-            try ScreenSaverAutomation.applyCurrentPowerSource()
-            status.stringValue = configuration.isEnabled ? "Screen saver switching is active." : "Screen saver switching is off."
-        } catch {
-            status.stringValue = error.localizedDescription
-        }
+        ScreenSaverAutomation.save(configuration)
+        try automationAgent.setEnabled(configuration.isEnabled, monitorURL: monitorURL)
+        try ScreenSaverAutomation.applyCurrentPowerSource()
     }
 
     private func reload() {
@@ -143,6 +137,7 @@ private final class PowerSettingsViewController: NSViewController {
         select(current.systemSleep, in: systemSleep)
         select(current.diskSleep, in: diskSleep)
         wakeForNetwork.state = current.wakeForNetwork ? .on : .off
+        renderScreenSaverAutomation()
     }
 
     private func heading() -> NSView {
@@ -168,52 +163,10 @@ private final class PowerSettingsViewController: NSViewController {
         NSTextField(labelWithString: value)
     }
 
-    private func screenSaverAutomationGroup() -> NSView {
-        let form = NSGridView(views: [
-            [label("On battery"), batteryScreenSaver],
-            [label("On power adapter"), powerAdapterScreenSaver],
-        ])
-        form.rowSpacing = 8
-        form.columnSpacing = 24
-        form.column(at: 0).xPlacement = .trailing
-        form.column(at: 1).xPlacement = .leading
-
-        let apply = NSButton(title: "Apply Screen Saver Switching", target: self, action: #selector(applyScreenSaverAutomation))
-        let content = NSStackView(views: [screenSaverEnabled, form, apply])
-        content.orientation = .vertical
-        content.alignment = .leading
-        content.spacing = 10
-
-        let group = NSBox()
-        group.boxType = .primary
-        group.titlePosition = .noTitle
-
-        let groupContent = NSView()
-        group.contentView = groupContent
-        groupContent.addSubview(content)
-        content.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            content.leadingAnchor.constraint(equalTo: groupContent.leadingAnchor, constant: 14),
-            content.trailingAnchor.constraint(equalTo: groupContent.trailingAnchor, constant: -14),
-            content.topAnchor.constraint(equalTo: groupContent.topAnchor, constant: 14),
-            content.bottomAnchor.constraint(equalTo: groupContent.bottomAnchor, constant: -14),
-            group.widthAnchor.constraint(equalToConstant: 464),
-        ])
-
-        let title = NSTextField(labelWithString: "Screen Saver")
-        title.font = .preferredFont(forTextStyle: .headline)
-        let section = NSStackView(views: [title, group])
-        section.orientation = .vertical
-        section.alignment = .leading
-        section.spacing = 8
-        return section
-    }
-
     private func renderScreenSaverAutomation() {
         let configuration = ScreenSaverAutomation.configuration
         screenSaverEnabled.state = configuration.isEnabled ? .on : .off
-        select(configuration.batteryMinutes, in: batteryScreenSaver)
-        select(configuration.powerAdapterMinutes, in: powerAdapterScreenSaver)
+        select(source == .battery ? configuration.batteryMinutes : configuration.powerAdapterMinutes, in: screenSaver)
     }
 
     private var monitorURL: URL {
