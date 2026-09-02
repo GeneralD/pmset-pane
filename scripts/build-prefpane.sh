@@ -3,9 +3,10 @@ set -euo pipefail
 
 root_dir=$(cd "$(dirname "$0")/.." && pwd)
 build_dir="$root_dir/dist"
-bundle_dir="$build_dir/PMSetPane.prefPane/Contents"
-version="${VERSION:-0.1.1}"
-icon_dir="$build_dir/PMSetPane.iconset"
+pane_name="PowerManagement"
+bundle_dir="$build_dir/$pane_name.prefPane/Contents"
+version="${VERSION:-0.1.2}"
+icon_dir="$build_dir/$pane_name.iconset"
 
 rm -rf "$build_dir"
 swift build --package-path "$root_dir" --configuration release --arch arm64
@@ -29,5 +30,5 @@ iconutil -c icns "$icon_dir" -o "$bundle_dir/Resources/PMSetPane.icns"
 
 codesign --force --sign - "$bundle_dir/MacOS/PMSetPane"
 
-ditto -c -k --sequesterRsrc --keepParent "$build_dir/PMSetPane.prefPane" "$build_dir/PMSetPane.zip"
+ditto -c -k --sequesterRsrc --keepParent "$build_dir/$pane_name.prefPane" "$build_dir/PMSetPane.zip"
 printf 'Created %s\n' "$build_dir/PMSetPane.zip"
